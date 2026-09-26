@@ -1,4 +1,5 @@
 ﻿import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import type { Database } from "better-sqlite3";
 import type { NavidromeReader } from "../db/navidrome-db.js";
 import type { MemoCache } from "../cache.js";
@@ -11,6 +12,16 @@ import { computeHeatmap } from "../stats/heatmap.js";
 import { computeTimeseries, type Bucketing } from "../stats/timeseries.js";
 import { computeSessions } from "../stats/sessions.js";
 import { recentPlays } from "../stats/recent.js";
+import { computeFlow } from "../stats/flow.js";
+
+const flowQuery = z.object({
+  group: z.enum(["artist", "album", "genre"]).default("artist"),
+  bucket: z.enum(["auto", "day", "week", "month"]).default("auto"),
+  sort: z.enum(["plays", "time"]).default("plays"),
+  limit: z.coerce.number().int().min(1).max(40).default(16),
+  compact: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
+  focus: z.string().max(300).optional(),
+});
 
 interface Opts {
   statsDb: Database;
@@ -77,6 +88,14 @@ export function registerStats(app: FastifyInstance, o: Opts): void {
     const t = tf(q);
     const bucket: Bucketing = q.bucket === "week" || q.bucket === "month" ? q.bucket : "day";
     return o.cache.get(key(["timeseries", q, t, bucket]), () => computeTimeseries(o.statsDb, o.reader, t, user(q), bucket, tz(q)));
+  });
+  app.get("/api/flow", async (req, reply) => {
+    const q = req.query as Q;
+    const flow = flowQuery.safeParse(q);
+    if (!flow.success) return reply.code(400).send({ error: "Invalid flow parameters" });
+    const t = tf(q);
+    const opts = { ...flow.data, user: user(q), offset: tz(q) };
+    return o.cache.get(key(["flow", t, opts]), () => computeFlow(o.statsDb, o.reader, t, opts));
   });
   app.get("/api/sessions", async (req) => {
     const q = req.query as Q;

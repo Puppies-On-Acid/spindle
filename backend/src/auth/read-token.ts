@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 const EXACT_PATHS = new Set([
   "/api/totals",
   "/api/timeseries",
+  "/api/flow",
   "/api/heatmap",
   "/api/sessions",
   "/api/recent",

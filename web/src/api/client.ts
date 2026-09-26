@@ -1,5 +1,5 @@
 import type {
-  RangeParams, Totals, ArtistTop, AlbumTop, TrackTop, GenreTop, HeatCell, TimePoint, Session, RecentPlay, SearchResult, EntityDetail, AuthStatus,
+  RangeParams, Totals, ArtistTop, AlbumTop, TrackTop, GenreTop, HeatCell, TimePoint, FlowData, FlowParams, Session, RecentPlay, SearchResult, EntityDetail, AuthStatus,
   CreateShareRequest, CreateShareResponse, PublicShare, AlbumTrack, UsersResponse,
 } from "./types";
 
@@ -21,7 +21,7 @@ export function dayWindow(dayIndex: number): { from: number; to: number } {
   return { from, to: from + 86400 };
 }
 
-function qs(params: RangeParams = {}): string {
+function qs(params: RangeParams | FlowParams = {}): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== null) sp.set(k, String(v));
   if (currentUser && !sp.has("user")) sp.set("user", currentUser);
@@ -33,8 +33,8 @@ function qs(params: RangeParams = {}): string {
 let authLost: (() => void) | null = null;
 export function setAuthLostHandler(fn: () => void): void { authLost = fn; }
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`/api${path}`, { credentials: "include" });
+async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(`/api${path}`, { credentials: "include", signal });
   if (res.status === 401) { authLost?.(); throw new AuthError(); }
   if (!res.ok) throw new ApiError(res.status, `GET ${path} failed (${res.status})`);
   return res.json() as Promise<T>;
@@ -64,6 +64,7 @@ export const api = {
   topGenres: (p?: RangeParams) => get<GenreTop[]>(`/tops/genres${qs(p)}`),
   heatmap: (p?: RangeParams) => get<HeatCell[]>(`/heatmap${qs(p)}`),
   timeseries: (p?: RangeParams) => get<TimePoint[]>(`/timeseries${qs(p)}`),
+  flow: (p?: FlowParams, signal?: AbortSignal) => get<FlowData>(`/flow${qs(p)}`, signal),
   sessions: (p?: RangeParams) => get<Session[]>(`/sessions${qs(p)}`),
   recent: (p?: RangeParams) => get<RecentPlay[]>(`/recent${qs(p)}`),
   search: (q: string) => get<SearchResult>(`/search?q=${encodeURIComponent(q)}`),

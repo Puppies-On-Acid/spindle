@@ -27,6 +27,7 @@ The accent recolors itself from the cover art, so each of these is a different s
 - A home dashboard with your headline numbers, top artist, and current favourite song
 - Tops: artists / albums / tracks, sort by plays or by time, with a filter
 - Browse the whole library and click into any artist, album, or track for its own page (rank, first/last play, a history chart, related tracks)
+- Flow: a navigable streamgraph showing how your artists rise, fade, and return over time
 - Pulse: a weekday by hour heatmap and a record-shaped listening clock
 - Sessions: your listening cut into actual sittings, newest or longest first
 - Recent: a plain feed of what you played, grouped by day
@@ -93,7 +94,7 @@ curl -H "Authorization: Bearer $SPINDLE_READ_TOKEN" \
   "https://spindle.example.com/api/totals?range=30d"
 ```
 
-That covers `/api/totals`, `/api/tops/*`, `/api/timeseries`, `/api/heatmap`, `/api/sessions`, `/api/recent`, `/api/search`, `/api/users`, `/api/entity/*`, `/api/album/*/tracks` and `/api/cover/*`. GET only, and everything else still needs a real login.
+That covers `/api/totals`, `/api/tops/*`, `/api/timeseries`, `/api/flow`, `/api/heatmap`, `/api/sessions`, `/api/recent`, `/api/search`, `/api/users`, `/api/entity/*`, `/api/album/*/tracks` and `/api/cover/*`. GET only, and everything else still needs a real login.
 
 As a [homepage](https://gethomepage.dev) custom API widget:
 

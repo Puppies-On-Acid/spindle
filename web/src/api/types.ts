@@ -10,6 +10,18 @@ export interface TrackTop { id: string; title: string; artist: string; artistId:
 export interface GenreTop { genre: string; plays: number; seconds: number; }
 export interface HeatCell { weekday: number; hour: number; plays: number; }
 export interface TimePoint { bucket: number; plays: number; seconds: number; }
+export type FlowGroup = "artist" | "album" | "genre";
+export interface FlowSeries {
+  id: string; name: string; subtitle: string; coverArt: string | null; href: string | null;
+  totalPlays: number; totalSeconds: number; plays: number[]; seconds: number[]; other?: boolean;
+}
+export interface FlowData {
+  group: FlowGroup; bucket: "day" | "week" | "month"; starts: number[]; ends: number[];
+  from: number; to: number; series: FlowSeries[]; totalPlays: number; totalSeconds: number; unassignedPlays: number;
+}
+export interface FlowParams extends Omit<RangeParams, "bucket"> {
+  group?: FlowGroup; bucket?: "auto" | "day" | "week" | "month"; compact?: boolean; focus?: string;
+}
 export interface SessionTrack { id: string; title: string; artist: string; artistId: string; albumId: string; hasCoverArt: boolean; duration: number; plays: number; }
 export interface Session { startedAt: number; endedAt: number; trackCount: number; seconds: number; tracks: SessionTrack[]; }
 export interface RecentPlay { playedAt: number; id: string; title: string; artist: string; album: string; artistId: string; albumId: string; hasCoverArt: boolean; }

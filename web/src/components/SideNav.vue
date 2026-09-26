@@ -18,6 +18,7 @@ const groups = [
     { to: "/tracks", label: "Tracks" },
   ] },
   { title: "Insights", items: [
+    { to: "/flow", label: "Flow" },
     { to: "/pulse", label: "Pulse" },
     { to: "/sessions", label: "Sessions" },
     { to: "/wrapped", label: "Wrapped" },
