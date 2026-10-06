@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import Database from "better-sqlite3";
 import { buildIndex, classify } from "./import/spotify.js";
 import type { NavTrack } from "./import/spotify.js";
+import { buildLastFmMatcher } from "./import/lastfm.js";
 import { matchKey } from "./import/normalize.js";
 import { openStatsDb } from "./db/stats-db.js";
 import { EventStore } from "./events/store.js";
@@ -118,7 +119,7 @@ async function main() {
 
   const tracks = navDb
     .prepare(
-      "SELECT id, title, artist, duration FROM media_file"
+      "SELECT id, title, artist, album, duration FROM media_file"
     )
     .all() as NavTrack[];
 
@@ -143,7 +144,8 @@ async function main() {
   const report = classify(
     plays,
     index,
-    30000
+    30000,
+    buildLastFmMatcher(tracks),
   );
   clearInterval(monitor);
 
