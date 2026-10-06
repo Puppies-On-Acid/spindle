@@ -63,6 +63,14 @@ docker compose up -d
 
 If you'd rather build it yourself, uncomment `build: .` in the compose and run with `--build`.
 
+### Native Windows
+
+Spindle can also run directly on 64-bit Windows without Docker, WSL, or hardware virtualization. The Windows release ZIP includes its own Node.js runtime, Windows-native production dependencies, the built backend/frontend, and helper scripts for startup and password generation.
+
+Extract the ZIP to a permanent directory such as `C:\\Spindle`, run `start-spindle.cmd` once to create `.env`, configure the Navidrome database path and secrets, then run it again. An optional PowerShell installer registers Spindle as a Scheduled Task so it starts at boot even when nobody is logged in.
+
+See [windows/README.md](windows/README.md) for the native Windows walkthrough.
+
 The full walkthrough (env vars, reverse proxy, Let's Encrypt) is in [docs/DEPLOY.md](docs/DEPLOY.md). The short version of what you need:
 
 - your Navidrome data dir mounted (Spindle opens the db read-only at the connection level) for metadata + cover art
