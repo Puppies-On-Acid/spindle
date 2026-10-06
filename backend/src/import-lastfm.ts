@@ -3,7 +3,6 @@ import Database from "better-sqlite3";
 import { buildIndex, classify } from "./import/spotify.js";
 import type { NavTrack } from "./import/spotify.js";
 import { buildLastFmMatcher } from "./import/lastfm.js";
-import { matchKey } from "./import/normalize.js";
 import { openStatsDb } from "./db/stats-db.js";
 import { EventStore } from "./events/store.js";
 
@@ -141,11 +140,13 @@ async function main() {
 
   const monitor = startMonitor("Matching");
 
+  const matcher = buildLastFmMatcher(tracks);
+
   const report = classify(
     plays,
     index,
     30000,
-    buildLastFmMatcher(tracks),
+    matcher,
   );
   clearInterval(monitor);
 
@@ -160,12 +161,11 @@ async function main() {
   if (cfg.missingFile) {
     const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
 
-    const unmatched = new Set(
-      report.unmatchedAgg.map((t) => matchKey(t.artist, t.title))
-    );
-
     const missingRows = plays.filter(
-      (p) => p.artist && p.track && unmatched.has(matchKey(p.artist, p.track))
+      (p) =>
+        p.artist &&
+        p.track &&
+        !matcher(index, p.artist, p.track, p.album)
     );
 
     const csv = [
