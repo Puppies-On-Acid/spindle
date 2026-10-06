@@ -1,0 +1,133 @@
+name: windows-native-ci
+
+on:
+  push:
+    branches: ["feature/windows-native-support"]
+  pull_request:
+    paths:
+      - "backend/**"
+      - "web/**"
+      - "windows/**"
+      - ".github/workflows/windows-native-ci.yml"
+      - ".github/workflows/release.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  windows-native:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            web/package-lock.json
+
+      - name: Build frontend
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble native Windows bundle
+        shell: pwsh
+        run: |
+          $out = Join-Path $PWD "spindle-windows-x64"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          Copy-Item backend/package.json, backend/package-lock.json $out
+          Push-Location $out
+          npm ci --omit=dev
+          Pop-Location
+
+          Copy-Item backend/dist (Join-Path $out "dist") -Recurse
+          Copy-Item web/dist (Join-Path $out "web") -Recurse
+          Copy-Item windows/spindle.env.example (Join-Path $out "spindle.env.example")
+          Copy-Item windows/start-spindle.cmd (Join-Path $out "start-spindle.cmd")
+          Copy-Item windows/hash-password.cmd (Join-Path $out "hash-password.cmd")
+          Copy-Item windows/run-spindle.ps1 (Join-Path $out "run-spindle.ps1")
+          Copy-Item windows/install-startup-task.ps1 (Join-Path $out "install-startup-task.ps1")
+          Copy-Item windows/uninstall-startup-task.ps1 (Join-Path $out "uninstall-startup-task.ps1")
+          Copy-Item windows/README.md (Join-Path $out "README-WINDOWS.md")
+          Copy-Item (Get-Command node.exe).Source (Join-Path $out "node.exe")
+
+      - name: Verify bundled runtime and native SQLite module
+        shell: pwsh
+        working-directory: spindle-windows-x64
+        run: |
+          .\node.exe --version
+          .\node.exe -e "const Database=require('better-sqlite3'); const db=new Database(':memory:'); console.log(db.prepare('select 1 as ok').get())"
+
+      - name: Smoke test server and built web UI
+        shell: pwsh
+        run: |
+          $out = Join-Path $PWD "spindle-windows-x64"
+          $envPath = Join-Path $out ".env"
+          @"
+          PORT=3590
+          INGEST_SECRET=windows-ci-secret
+          STATS_DB_PATH=./data/stats.db
+          NAVIDROME_DB_PATH=:memory:
+          DEFAULT_USER=ci
+          SESSION_GAP_MINUTES=30
+          AUTH_ENABLED=false
+          WEB_DIR=./web
+          "@ | Set-Content -Path $envPath -Encoding ascii
+
+          New-Item -ItemType Directory -Force -Path (Join-Path $out "data") | Out-Null
+
+          $proc = Start-Process `
+            -FilePath (Join-Path $out "node.exe") `
+            -ArgumentList "--env-file=.env", "dist\server.js" `
+            -WorkingDirectory $out `
+            -PassThru `
+            -NoNewWindow
+
+          try {
+            $ok = $false
+            for ($i = 0; $i -lt 30; $i++) {
+              Start-Sleep -Milliseconds 500
+              try {
+                $health = Invoke-RestMethod -Uri "http://127.0.0.1:3590/health" -TimeoutSec 2
+                if ($health.status -eq "ok") {
+                  $ok = $true
+                  break
+                }
+              } catch {}
+            }
+            if (-not $ok) {
+              throw "Spindle did not become healthy"
+            }
+
+            $home = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:3590/" -TimeoutSec 5
+            if ($home.StatusCode -ne 200) {
+              throw "Frontend returned HTTP $($home.StatusCode)"
+            }
+            Write-Host "Windows native smoke test passed."
+          }
+          finally {
+            if (-not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force
+            }
+          }
+
+      - name: Create test ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "spindle-windows-x64\*" -DestinationPath "spindle-windows-x64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spindle-windows-x64
+          path: spindle-windows-x64.zip
