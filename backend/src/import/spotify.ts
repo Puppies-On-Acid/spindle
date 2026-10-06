@@ -67,6 +67,12 @@ export function buildIndex(tracks: NavTrack[]): NavIndex {
 }
 
 export type MatchTier = "exact" | "title" | "fuzzy";
+export type PlayMatcher = (
+  index: NavIndex,
+  artist: string,
+  title: string,
+  album: string | null,
+) => { track: NavTrack; tier: MatchTier } | null;
 
 export function matchDetailed(index: NavIndex, artist: string, title: string): { track: NavTrack; tier: MatchTier } | null {
   const exact = index.byKey.get(matchKey(artist, title));
@@ -102,7 +108,12 @@ export function matchPlaylist(items: { artist: string; title: string }[], index:
   return { matchedPaths, matched: matchedPaths.length, total: items.length, unmatched };
 }
 
-export function classify(plays: SpotifyPlay[], index: NavIndex, thresholdMs: number): ImportReport {
+export function classify(
+  plays: SpotifyPlay[],
+  index: NavIndex,
+  thresholdMs: number,
+  matcher?: PlayMatcher,
+): ImportReport {
   const r: ImportReport = { totalRecords: 0, nonMusic: 0, tooShort: 0, counted: 0, matched: 0, matchedExact: 0, matchedByTitle: 0, unmatched: 0,
     events: [], matchedAgg: [], byTitleAgg: [], unmatchedAgg: [], firstTs: null, lastTs: null, matchedSeconds: 0 };
   const matchedMap = new Map<string, Agg>();
@@ -127,7 +138,9 @@ export function classify(plays: SpotifyPlay[], index: NavIndex, thresholdMs: num
     if (p.ms_played < thresholdMs) { r.tooShort++; continue; }
     r.counted++;
     const key = matchKey(p.artist, p.track);
-    const hit = matchDetailed(index, p.artist, p.track);
+    const hit = matcher
+      ? matcher(index, p.artist, p.track, p.album)
+      : matchDetailed(index, p.artist, p.track);
     if (!hit) {
       r.unmatched++;
       bump(unmatchedMap, key, p.artist, p.track);
