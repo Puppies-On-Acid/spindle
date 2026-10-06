@@ -55,7 +55,7 @@ export async function bootApp(env?: Record<string, string | undefined>): Promise
 if (process.argv[1] && process.argv[1].endsWith("server.js")) {
   const cfg = loadConfig();
   bootApp().then(async (app) => {
-    const addr = await app.listen({ port: cfg.port, host: "0.0.0.0" });
+    const addr = await app.listen({ port: cfg.port, host: cfg.host });
     console.log(`Spindle backend listening on ${addr}`);
   });
 }
