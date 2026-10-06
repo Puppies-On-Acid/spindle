@@ -122,6 +122,12 @@ jobs:
             }
           }
 
+      - name: Remove smoke-test state
+        shell: pwsh
+        run: |
+          Remove-Item "spindle-windows-x64\.env" -Force -ErrorAction SilentlyContinue
+          Remove-Item "spindle-windows-x64\data" -Recurse -Force -ErrorAction SilentlyContinue
+
       - name: Create test ZIP
         shell: pwsh
         run: |
