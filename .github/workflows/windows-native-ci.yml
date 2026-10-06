@@ -110,9 +110,9 @@ jobs:
               throw "Spindle did not become healthy"
             }
 
-            $home = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:3590/" -TimeoutSec 5
-            if ($home.StatusCode -ne 200) {
-              throw "Frontend returned HTTP $($home.StatusCode)"
+            $homeResponse = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:3590/" -TimeoutSec 5
+            if ($homeResponse.StatusCode -ne 200) {
+              throw "Frontend returned HTTP $($homeResponse.StatusCode)"
             }
             Write-Host "Windows native smoke test passed."
           }
