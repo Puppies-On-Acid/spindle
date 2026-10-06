@@ -7,7 +7,7 @@ function canonicalArtist(value: string): string {
 }
 
 function canonicalAlbum(value: string): string {
-  return normArtist(value);
+  return normArtist(value).replace(/^(the|a|an)\s+/, "");
 }
 
 const romanValues: Record<string, string> = {
@@ -60,6 +60,21 @@ function canonicalTitle(value: string): string {
 
 function compactTitle(value: string): string {
   return canonicalTitle(value).replace(/\s+/g, "");
+}
+
+function relaxedPartTitle(value: string): string {
+  return canonicalTitle(value)
+    .replace(/\bpart\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isBoundarySuffix(a: string, b: string): boolean {
+  if (!a || !b || a === b) return false;
+  const shorter = a.length <= b.length ? a : b;
+  const longer = a.length <= b.length ? b : a;
+  if (shorter.length < 6 || shorter.split(" ").length < 2) return false;
+  return longer.endsWith(` ${shorter}`);
 }
 
 // Optimal string alignment distance. This handles the common Last.fm typo case
@@ -151,6 +166,25 @@ export function buildLastFmMatcher(tracks: NavTrack[]): PlayMatcher {
       return { track: exactLoose[0], tier: "fuzzy" };
     }
     if (exactLoose.length > 1) return null;
+
+    if (albumScoped) {
+      const wantedRelaxed = relaxedPartTitle(title);
+      const relaxedMatches = candidates.filter(
+        (track) => relaxedPartTitle(track.title) === wantedRelaxed,
+      );
+      if (relaxedMatches.length === 1) {
+        return { track: relaxedMatches[0], tier: "fuzzy" };
+      }
+      if (relaxedMatches.length > 1) return null;
+
+      const suiteMatches = candidates.filter((track) =>
+        isBoundarySuffix(wantedTitle, canonicalTitle(track.title)),
+      );
+      if (suiteMatches.length === 1) {
+        return { track: suiteMatches[0], tier: "fuzzy" };
+      }
+      if (suiteMatches.length > 1) return null;
+    }
 
     const wantedCompact = compactTitle(title);
     if (!wantedCompact) return null;
