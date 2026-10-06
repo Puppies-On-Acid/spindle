@@ -14,6 +14,7 @@ export interface CoverConfig {
 }
 
 export interface Config {
+  host: string;
   port: number;
   ingestSecret: string;
   statsDbPath: string;
@@ -65,6 +66,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   }
 
   return {
+    host: env.HOST ?? "0.0.0.0",
     port: Number(env.PORT ?? 3590),
     ingestSecret,
     statsDbPath: env.STATS_DB_PATH ?? "./data/stats.db",
