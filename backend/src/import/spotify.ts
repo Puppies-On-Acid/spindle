@@ -1,7 +1,7 @@
 import { matchKey, normTitle, normArtist, fuzzyTitleKey } from "./normalize.js";
 
 export interface SpotifyPlay { ts: string; ms_played: number; track: string | null; artist: string | null; album: string | null; uri: string | null; }
-export interface NavTrack { id: string; title: string; artist: string; duration: number; path?: string; }
+export interface NavTrack { id: string; title: string; artist: string; album?: string; duration: number; path?: string; }
 export interface ImportEvent { played_at: number; nd_track_id: string; }
 export interface Agg { artist: string; title: string; plays: number; }
 export interface NavIndex { byKey: Map<string, NavTrack>; byTitle: Map<string, NavTrack[]>; byFuzzyTitle: Map<string, NavTrack[]>; }
