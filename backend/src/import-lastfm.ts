@@ -160,6 +160,71 @@ async function main() {
   console.log(`  Title only: ${report.matchedByTitle}`);
   console.log(`  Missing: ${report.unmatched}`);
 
+  if (cfg.stats) {
+    try {
+      const statsDb = new Database(cfg.stats, {
+        readonly: true,
+        fileMustExist: true,
+      });
+
+      const importedByTrack = new Map<string, number>();
+      for (const event of report.events) {
+        importedByTrack.set(
+          event.nd_track_id,
+          (importedByTrack.get(event.nd_track_id) ?? 0) + 1,
+        );
+      }
+
+      const baselineRows = statsDb
+        .prepare(
+          "SELECT nd_track_id, COUNT(*) AS plays FROM play_events WHERE source='baseline' AND user=? GROUP BY nd_track_id",
+        )
+        .all(cfg.user) as { nd_track_id: string; plays: number }[];
+
+      statsDb.close();
+
+      let overlapTracks = 0;
+      let baselinePlaysOnOverlap = 0;
+      let importedPlaysOnOverlap = 0;
+      let baselineHigherTracks = 0;
+      let baselineHigherBy = 0;
+
+      for (const row of baselineRows) {
+        const imported = importedByTrack.get(row.nd_track_id);
+        if (imported === undefined) continue;
+
+        overlapTracks++;
+        baselinePlaysOnOverlap += row.plays;
+        importedPlaysOnOverlap += imported;
+
+        if (row.plays > imported) {
+          baselineHigherTracks++;
+          baselineHigherBy += row.plays - imported;
+        }
+      }
+
+      console.log("");
+      console.log("Baseline overlap preview:");
+      console.log(`  Matched unique tracks: ${importedByTrack.size}`);
+      console.log(`  Tracks also having Navidrome baseline: ${overlapTracks}`);
+      console.log(`  Baseline plays on overlapping tracks: ${baselinePlaysOnOverlap}`);
+      console.log(`  Last.fm plays on overlapping tracks: ${importedPlaysOnOverlap}`);
+      console.log(
+        `  Overlap tracks where baseline > Last.fm: ${baselineHigherTracks}` +
+          ` (baseline exceeds Last.fm by ${baselineHigherBy} plays total)`,
+      );
+      console.log(
+        cfg.excludeBaselineWhenImported
+          ? "  EXCLUDE_BASELINE_WHEN_IMPORTED=true: those baseline plays will be hidden from counted stats after import."
+          : "  EXCLUDE_BASELINE_WHEN_IMPORTED=false: baseline and imported plays will both be counted after import.",
+      );
+    } catch (err) {
+      console.warn(
+        `Could not inspect existing baseline overlap: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   if (cfg.missingFile) {
     const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
 
