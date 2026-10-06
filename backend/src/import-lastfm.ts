@@ -66,6 +66,8 @@ function parseArgs(argv: string[]) {
     user: process.env.DEFAULT_USER ?? "",
     navidrome: process.env.NAVIDROME_DB_PATH ?? "",
     stats: process.env.STATS_DB_PATH ?? "",
+    excludeBaselineWhenImported:
+      process.env.EXCLUDE_BASELINE_WHEN_IMPORTED === "true",
   };
 }
 
@@ -197,7 +199,9 @@ async function main() {
 
   console.log("Writing events...");
 
-  const statsDb = openStatsDb(cfg.stats);
+  const statsDb = openStatsDb(cfg.stats, {
+    excludeBaselineWhenImported: cfg.excludeBaselineWhenImported,
+  });
 
   const store = new EventStore(statsDb);
 
