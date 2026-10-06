@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 export interface AuthConfig {
   passwordHash: string;
   sessionSecret: string;
@@ -77,6 +79,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     excludeBaselineWhenImported: env.EXCLUDE_BASELINE_WHEN_IMPORTED === "true",
     auth,
     cover,
-    webDir: env.WEB_DIR,
+    webDir: env.WEB_DIR ? resolve(env.WEB_DIR) : undefined,
   };
 }
