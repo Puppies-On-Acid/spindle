@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -36,3 +36,65 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            web/package-lock.json
+
+      - name: Build frontend
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble native Windows bundle
+        shell: pwsh
+        run: |
+          $out = Join-Path $PWD "spindle-windows-x64"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          Copy-Item backend/package.json, backend/package-lock.json $out
+          Push-Location $out
+          npm ci --omit=dev
+          Pop-Location
+
+          Copy-Item backend/dist (Join-Path $out "dist") -Recurse
+          Copy-Item web/dist (Join-Path $out "web") -Recurse
+          Copy-Item windows/spindle.env.example (Join-Path $out "spindle.env.example")
+          Copy-Item windows/start-spindle.cmd (Join-Path $out "start-spindle.cmd")
+          Copy-Item windows/hash-password.cmd (Join-Path $out "hash-password.cmd")
+          Copy-Item windows/run-spindle.ps1 (Join-Path $out "run-spindle.ps1")
+          Copy-Item windows/install-startup-task.ps1 (Join-Path $out "install-startup-task.ps1")
+          Copy-Item windows/uninstall-startup-task.ps1 (Join-Path $out "uninstall-startup-task.ps1")
+          Copy-Item windows/README.md (Join-Path $out "README-WINDOWS.md")
+
+          $node = (Get-Command node.exe).Source
+          Copy-Item $node (Join-Path $out "node.exe")
+
+          Compress-Archive -Path "$out\*" -DestinationPath "spindle-windows-x64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spindle-windows-x64
+          path: spindle-windows-x64.zip
+
+      - name: Attach Windows bundle to tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: spindle-windows-x64.zip
